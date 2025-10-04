@@ -32,9 +32,28 @@ if "city_values" not in st.session_state:
 if "city_counter" not in st.session_state:
     st.session_state.city_counter = 0
 
+if "page" not in st.session_state:
+    st.session_state.page = "Trip Planner"
+
+
+def change_page():
+    if st.session_state.page == "Trip Planner":
+        st.session_state.page = "Search Attractions"
+    else:
+        st.session_state.page = "Trip Planner"
+
 
 # ---- Subpage selection ----
-page = st.sidebar.radio("Select page:", ["City Ranking", "Trip Planner"])
+page = st.sidebar.radio(
+    "Select page:",
+    ["Trip Planner", "Search Attractions"],
+    index=0 if st.session_state.page == "Trip Planner" else 1,
+    key="sidebar_page",
+    on_change=change_page,
+)
+
+# Sync sidebar selection with our state
+st.session_state.page = page
 
 
 def calculate_values(list_of_selected_categories):
@@ -73,82 +92,15 @@ def calculate_values(list_of_selected_categories):
     return scaled.tolist()
 
 
-# -------------------------------
-# PAGE 1: City Ranking
-# -------------------------------
-if page == "City Ranking":
-    st.title("City Ranking")
-
-    # Ranking weights
-    st.sidebar.subheader("Ranking Weights")
-    weight_cost = st.sidebar.slider("Weight: Cost (food + rent)", 0.0, 1.0, 0.5)
-    weight_safety = st.sidebar.slider("Weight: Safety Index", 0.0, 1.0, 0.5)
-    weight_air = st.sidebar.slider("Weight: Air Quality", 0.0, 1.0, 0.0)
-
-    # Standard assumptions for monthly cost
-    apartment_size = 50
-    rental_yield = 0.04
-    meals_per_day = 3
-    days = 30
-
-    # Compute estimated monthly cost
-    cost_list = []
-    for city, row in cities_data.iterrows():
-        food_cost = meals_per_day * days * row["Meal (€)"]
-        yearly_rent = row["Rent per m² (€)"] * apartment_size * rental_yield
-        daily_rent = yearly_rent / 365
-        rent_cost = daily_rent * days
-        total_cost = food_cost + rent_cost
-        cost_list.append(total_cost)
-    cities_data["estimated_monthly_cost"] = cost_list
-
-    # Normalize for ranking
-    cost_norm = (
-        cities_data["estimated_monthly_cost"]
-        - cities_data["estimated_monthly_cost"].min()
-    ) / (
-        cities_data["estimated_monthly_cost"].max()
-        - cities_data["estimated_monthly_cost"].min()
-    )
-    safety_norm = (
-        cities_data["Safety Index (0-1)"] - cities_data["Safety Index (0-1)"].min()
-    ) / (
-        cities_data["Safety Index (0-1)"].max()
-        - cities_data["Safety Index (0-1)"].min()
-    )
-    air_norm = (
-        cities_data["Air Quality (normalized)"]
-        - cities_data["Air Quality (normalized)"].min()
-    ) / (
-        cities_data["Air Quality (normalized)"].max()
-        - cities_data["Air Quality (normalized)"].min()
-    )
-
-    # Combined ranking score
-    cities_data["ranking_score"] = (
-        weight_safety * safety_norm
-        + weight_cost * (1 - cost_norm)
-        + weight_air * air_norm
-    )
-
-    ranked = cities_data.sort_values("ranking_score", ascending=False)
-    st.subheader("Top Cities")
-    st.dataframe(
-        ranked[
-            [
-                "estimated_monthly_cost",
-                "Safety Index (0-1)",
-                "Air Quality (normalized)",
-                "ranking_score",
-            ]
-        ]
-    )
+def go_to_page_2(city):
+    st.session_state.selected_city = city
+    st.session_state.page = "Search Attractions"
 
 
 # -------------------------------
-# PAGE 2: Trip Planner
+# PAGE 1: Trip Planner
 # -------------------------------
-else:
+if page == "Trip Planner":
     # ---- UI ----
     st.title("Travel Preferences")
 
@@ -204,6 +156,12 @@ else:
         if checkbox:
             st.success(f"{city_name} has been added ✅")
 
+        change_page_button = st.button(
+            f"Search attractions in {city_name}",
+            on_click=go_to_page_2,
+            args=[city_name],
+        )
+
     # Sidebar: Trip costs
     with st.sidebar:
         st.header("🧳 To-Visit List & Costs")
@@ -252,3 +210,5 @@ else:
             )
         else:
             st.write("No cities added yet.")
+else:
+    st.write("LOL")
