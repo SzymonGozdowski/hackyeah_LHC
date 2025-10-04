@@ -4,7 +4,9 @@ import folium
 from streamlit_folium import st_folium
 from marker_functions import set_icon_with_color
 from categories import categories, get_attractions
+import numpy as np
 
+number_of_cities = 49
 
 # ---- Load data ----
 @st.cache_data
@@ -25,6 +27,41 @@ cities_data = st.session_state.cities_data
 
 # ---- Subpage selection ----
 page = st.sidebar.radio("Select page:", ["City Ranking", "Trip Planner"])
+
+def calculate_values(list_of_selected_categories):
+
+    list_of_values = [0] * number_of_cities
+    counter = 0
+
+    if not list_of_selected_categories:
+        return [255] * number_of_cities
+
+    for row in st.session_state.cities_data.iterrows():
+        if "Tourism" in list_of_selected_categories:
+            list_of_values[counter] += row[1][0]
+        if "Night Life" in list_of_selected_categories:
+            list_of_values[counter] += row[1][1]
+        if "Safety Index" in list_of_selected_categories:
+            list_of_values[counter] += row[1][3]
+        if "Low Meal Prices" in list_of_selected_categories:
+            list_of_values[counter] += 1 - row[1][6]
+        if "Low Rent Prices" in list_of_selected_categories:
+            list_of_values[counter] += 1 - row[1][7]
+        if "Air Quality" in list_of_selected_categories:
+            list_of_values[counter] += row[1][8]
+        counter += 1
+
+    values = np.array(list_of_values)
+    min_val = np.min(values)
+    max_val = np.max(values)
+    if max_val - min_val == 0:
+        normalized = np.ones_like(values)  # unikamy dzielenia przez 0
+    else:
+        normalized = (values - min_val) / (max_val - min_val)
+
+    scaled = np.round(normalized * 255).astype(int)
+
+    return scaled.tolist()
 
 # -------------------------------
 # PAGE 1: City Ranking
@@ -74,21 +111,28 @@ if page == "City Ranking":
     st.subheader("Top Cities")
     st.dataframe(ranked[["estimated_monthly_cost", "Safety Index (0-1)", "Air Quality (normalized)", "ranking_score"]])
 
+
 # -------------------------------
 # PAGE 2: Trip Planner
 # -------------------------------
 else:
-    st.title("Trip Planner")
+    # ---- UI ----
+    st.title("Travel Preferences")
 
-    # Attraction categories
     selected_categories = st.multiselect(
-        "Choose categories you are interested in:", options=list(categories.keys())
+        "Choose categories you are interested in:",
+        options=[
+            "Tourism",
+            "Night Life",
+            "Safety Index",
+            "Low Meal Prices",
+            "Low Rent Prices",
+            "Air Quality",
+        ],
     )
+
     if selected_categories:
-        attractions = get_attractions(selected_categories)
-        st.subheader("Attractions you might like:")
-        for cat, items in attractions.items():
-            st.markdown(f"**{cat}:** " + ", ".join(items))
+        st.session_state.city_values = calculate_values(selected_categories)
 
     st.subheader("Select cities that you are interested in on the map 🌍")
 
