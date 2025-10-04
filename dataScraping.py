@@ -40,6 +40,7 @@ def get_city_prices(city_name):
     df = pd.DataFrame(data, columns=["Item", f"{city_name}"])
     return df
 
+<<<<<<< Updated upstream
 # List of 10 European cities
 cities = [
     "London", "Paris", "Berlin", "Madrid", "Rome", "Barcelona", "Amsterdam",
@@ -84,3 +85,67 @@ master_csv_filename = "europe_meal_rent_prices_clean.csv"
 master_df.to_csv(master_csv_filename, index=False)
 print(f"Cleaned data saved to {master_csv_filename}")
 print(master_df)
+=======
+def get_cities_crime_and_safety_rate():
+    url = "https://www.numbeo.com/crime/rankings.jsp"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error fetching data. Status code: {response.status_code}")
+        return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # Znalezienie tabeli po id="t2"
+    table = soup.find("table", {"id": "t2"})
+    if not table:
+        print("No table with id='t2' found.")
+        return None
+
+    #print(table)
+
+    tbody = table.find("tbody")
+    if not tbody:
+        print("No tbody found in table.")
+        return None
+
+    rows = tbody.find_all("tr")
+    data = []
+
+
+    for row in rows:
+        cols = row.find_all("td")
+        cols = [col.get_text(strip=True) for col in cols]
+        words = cols[1].split(", ")
+        
+        cols[0] = words[0]
+        cols[1] = words[1]
+
+        if len(cols) >= 4:
+            data.append([cols[0], cols[1], cols[2], cols[3]])  # City, Crime Index, Safety Index, QoL Index
+
+    df = pd.DataFrame(data, columns=["City", "Crime Index", "Safety Index", "Quality of Life Index"])
+    return df
+
+
+
+# --- Example usage ---
+
+crime_and_safety = get_cities_crime_and_safety_rate()
+crime_and_safety.to_csv("data_base/crime_rates_and_safety.csv", index=False, encoding="utf-8")
+print(crime_and_safety.head())
+
+'''
+
+city = input("Enter the city name (e.g., Paris, New-York): ")
+df_city = get_city_prices(city)
+if df_city is not None:
+    print(df_city.head())
+
+'''
+>>>>>>> Stashed changes
