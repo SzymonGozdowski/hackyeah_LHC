@@ -14,10 +14,10 @@ m.add_child(folium.LatLngPopup())
 output = st_folium(m, width=700, height=500)
 
 # Odczytaj kliknięcie
-if output["last_clicked"]:
-    lat = output["last_clicked"]["lat"]
-    lon = output["last_clicked"]["lng"]
-    st.write(f"Kliknięto w: **{lat:.4f}, {lon:.4f}**")
+# if output["last_clicked"]:
+#     lat = output["last_clicked"]["lat"]
+#     lon = output["last_clicked"]["lng"]
+#     st.write(f"Kliknięto w: **{lat:.4f}, {lon:.4f}**")
 
-    # Przykład reakcji
-    st.success("🎉 Wykonuję akcję na podstawie kliknięcia!")
+#     # Przykład reakcji
+#     st.success("🎉 Wykonuję akcję na podstawie kliknięcia!")
