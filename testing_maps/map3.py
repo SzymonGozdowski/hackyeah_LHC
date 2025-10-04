@@ -10,13 +10,22 @@ city_icon = folium.CustomIcon(
 )
 
 # Tworzymy znacznik
-marker = folium.Marker(location=[52.23, 21.01], popup="Warszawa", icon=city_icon)
+
+marker = folium.Marker(
+    location=[52.23, 21.01], tooltip="Warszawa", popup="Warszawa", icon=city_icon
+)
 
 # Dodajemy znacznik do mapy
 m.add_child(marker)
 
 # Można też dodać więcej
-m.add_child(folium.Marker(location=[50.06, 19.94], popup="Kraków", icon=city_icon))
+
+m.add_child(
+    folium.Marker(
+        location=[50.06, 19.94], tooltip="Kraków", popup="Kraków", icon=city_icon
+    )
+)
+
 
 # Zapisz lub wyświetl
 # m.save("mapa.html")
