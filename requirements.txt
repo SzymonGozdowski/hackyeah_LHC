@@ -5,4 +5,8 @@ streamlit
 =======
 pandas==2.2.3
 requests==1.26.4
+joblib-1.5.2 
+scikit-learn-1.7.2 
+scipy-1.16.2 
+threadpoolctl-3.6.0
 >>>>>>> 2de9738d884cb09b2d53d181cb301afcaf4a5261
