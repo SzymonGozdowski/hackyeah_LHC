@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 streamlit-folium
 folium
 streamlit
-pandas
+=======
+pandas==2.2.3
+requests==1.26.4
+>>>>>>> 2de9738d884cb09b2d53d181cb301afcaf4a5261
