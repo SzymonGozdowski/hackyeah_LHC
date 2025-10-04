@@ -25,6 +25,14 @@ if "cities_data" not in st.session_state:
 
 cities_data = st.session_state.cities_data
 
+
+if "city_values" not in st.session_state:
+    st.session_state.city_values = [255] * number_of_cities
+
+if "city_counter" not in st.session_state:
+    st.session_state.city_counter = 0
+
+
 # ---- Subpage selection ----
 page = st.sidebar.radio("Select page:", ["City Ranking", "Trip Planner"])
 
@@ -136,19 +144,20 @@ else:
 
     st.subheader("Select cities that you are interested in on the map 🌍")
 
-    # Map
+    # ---- Map ----
     m = folium.Map(location=[52, 10], zoom_start=4)
-    for city, row in cities_data.iterrows():
-        popup_text = (
-            f"{city}<br>"
-            f"Meal: €{row['Meal (€)']}<br>"
-            f"Rent per m²: €{row['Rent per m² (€)']}"
-        )
+    st.session_state.city_counter = 0
+    for city, row in st.session_state.cities_data.iterrows():
+        tooltip_text = f"Match percentage: {round(st.session_state.city_values[st.session_state.city_counter] * 100 / 255, 2)} %"
         folium.Marker(
             [row["Latitude"], row["Longitude"]],
-            popup=popup_text,
-            icon=set_icon_with_color(230),
+            popup=city,
+            tooltip=tooltip_text,
+            icon=set_icon_with_color(
+                st.session_state.city_values[st.session_state.city_counter]
+            ),
         ).add_to(m)
+        st.session_state.city_counter += 1
 
     output = st_folium(m, width=700, height=500)
 
