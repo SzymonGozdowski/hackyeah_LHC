@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-streamlit-folium
-folium
-streamlit
-=======
+streamlit==1.39.0
 pandas==2.2.3
-requests==1.26.4
-joblib-1.5.2 
-scikit-learn-1.7.2 
-scipy-1.16.2 
-threadpoolctl-3.6.0
-geographiclib-2.1 
-geopy-2.4.1
->>>>>>> 2de9738d884cb09b2d53d181cb301afcaf4a5261
+folium==0.17.0
+streamlit-folium==0.22.0
+numpy==2.1.2
+google-search-results==2.4.2
+
