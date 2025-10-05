@@ -1,8 +1,0 @@
-Travel:
-
-Aplikacja która pozwoli na wybranie optymanlnej trasy podróży po wybraniu przez nas interesujących kryteriów
-- mapa swiata/polski na której możemy zobaczyć kraje/miasta które najbardziej pasują do wybranych przez nas kategorii (kolormap)
-- ui do wybrania naszych kryteriów
-- kryteria: bezpieczeństwo, kultura, sport, ekonomia, eco-strefy, nocne życie
-- stworzenie grafu będącego naszą mapą świata/polski na której wagi krawędzi są wyliczane na podstawie wpasowania się miast w kategorie
-- dijkstra przechodząca po grafie z wagami 
