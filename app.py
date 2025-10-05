@@ -1,0 +1,272 @@
+import streamlit as st
+import pandas as pd
+import folium
+from streamlit_folium import st_folium
+from marker_functions import set_icon_with_color
+import numpy as np
+from serpapi import GoogleSearch
+
+number_of_cities = 49
+
+
+# ---- Load data ----
+@st.cache_data
+def load_city_data():
+    df = pd.read_csv("full_data.csv")
+    # Ensure column names are clean (replace en-dash with hyphen)
+    df = df.rename(columns=lambda x: x.replace("–", "-").strip())
+    df["in_trip"] = False
+    df["days"] = 1
+    df["city_index"] = range(0, 49)
+    df = df.set_index("City")
+    return df
+
+
+if "cities_data" not in st.session_state:
+    st.session_state.cities_data = load_city_data()
+
+cities_data = st.session_state.cities_data
+
+
+if "city_values" not in st.session_state:
+    st.session_state.city_values = [255] * number_of_cities
+
+if "city_counter" not in st.session_state:
+    st.session_state.city_counter = 0
+
+if "page" not in st.session_state:
+    st.session_state.page = "Trip Planner"
+
+if "searched_city" not in st.session_state:
+    st.session_state.searched_city = "Cracow"
+
+if "list_of_cities" not in st.session_state:
+    st.session_state.list_of_cities = st.session_state.cities_data.index
+
+
+def change_page():
+    if st.session_state.page == "Trip Planner":
+        st.session_state.page = "Search Attractions"
+    else:
+        st.session_state.page = "Trip Planner"
+
+
+# ---- Subpage selection ----
+page = st.sidebar.radio(
+    "Select page:",
+    ["Trip Planner", "Search Attractions"],
+    index=0 if st.session_state.page == "Trip Planner" else 1,
+    key="sidebar_page",
+    on_change=change_page,
+)
+
+# Sync sidebar selection with our state
+st.session_state.page = page
+
+
+def calculate_values(list_of_selected_categories):
+
+    list_of_values = [0] * number_of_cities
+    counter = 0
+
+    if not list_of_selected_categories:
+        return [255] * number_of_cities
+
+    for row in st.session_state.cities_data.iterrows():
+        if "Tourism" in list_of_selected_categories:
+            list_of_values[counter] += row[1][0]
+        if "Night Life" in list_of_selected_categories:
+            list_of_values[counter] += row[1][1]
+        if "Safety Index" in list_of_selected_categories:
+            list_of_values[counter] += row[1][3]
+        if "Low Meal Prices" in list_of_selected_categories:
+            list_of_values[counter] += 1 - row[1][6]
+        if "Low Rent Prices" in list_of_selected_categories:
+            list_of_values[counter] += 1 - row[1][7]
+        if "Air Quality" in list_of_selected_categories:
+            list_of_values[counter] += row[1][8]
+        counter += 1
+
+    values = np.array(list_of_values)
+    min_val = np.min(values)
+    max_val = np.max(values)
+    if max_val - min_val == 0:
+        normalized = np.ones_like(values)  # unikamy dzielenia przez 0
+    else:
+        normalized = (values - min_val) / (max_val - min_val)
+
+    scaled = np.round(normalized * 255).astype(int)
+
+    return scaled.tolist()
+
+
+def get_list_of_attractions(query, lat, lon, api_key):
+    ll = f"@{lat},{lon},14z"
+
+    params = {"engine": "google_maps", "q": query, "ll": ll, "api_key": api_key}
+
+    search = GoogleSearch(params)
+    results = search.get_dict()
+
+    return results.get("local_results", [])
+
+
+def go_to_page_2(city):
+    st.session_state.searched_city = city
+    st.session_state.page = "Search Attractions"
+
+
+# -------------------------------
+# PAGE 1: Trip Planner
+# -------------------------------
+if page == "Trip Planner":
+    # ---- UI ----
+    st.title("Travel Preferences")
+
+    selected_categories = st.multiselect(
+        "Choose categories you are interested in:",
+        options=[
+            "Tourism",
+            "Night Life",
+            "Safety Index",
+            "Low Meal Prices",
+            "Low Rent Prices",
+            "Air Quality",
+        ],
+    )
+
+    if selected_categories:
+        st.session_state.city_values = calculate_values(selected_categories)
+
+    st.subheader("Select cities that you are interested in on the map 🌍")
+
+    # ---- Map ----
+    m = folium.Map(location=[52, 10], zoom_start=4)
+    st.session_state.city_counter = 0
+    for city, row in st.session_state.cities_data.iterrows():
+        tooltip_text = f"Match percentage: {round(st.session_state.city_values[st.session_state.city_counter] * 100 / 255, 2)} %"
+        folium.Marker(
+            [row["Latitude"], row["Longitude"]],
+            popup=city,
+            tooltip=tooltip_text,
+            icon=set_icon_with_color(
+                st.session_state.city_values[st.session_state.city_counter]
+            ),
+        ).add_to(m)
+        st.session_state.city_counter += 1
+
+    output = st_folium(m, width=700, height=500)
+
+    # Handle city selection
+    if output["last_object_clicked_popup"]:
+        city_name = output["last_object_clicked_popup"].split("\n")[0].strip()
+        st.write(f"Selected city: **{city_name}**")
+
+        def toggle_city():
+            cities_data.at[city_name, "in_trip"] = not cities_data.at[
+                city_name, "in_trip"
+            ]
+
+        checkbox = st.checkbox(
+            f"Add {city_name} to your trip",
+            value=cities_data.loc[city_name]["in_trip"],
+            on_change=toggle_city,
+        )
+        if checkbox:
+            st.success(f"{city_name} has been added ✅")
+
+        change_page_button = st.button(
+            f"Search attractions in {city_name}",
+            on_click=go_to_page_2,
+            args=[city_name],
+        )
+
+    # Sidebar: Trip costs
+    with st.sidebar:
+        st.header("🧳 To-Visit List & Costs")
+        meals_per_day = st.number_input("Meals per day", 1, 10, 3)
+        apartment_size = st.number_input("Apartment size (m²)", 10, 200, 50)
+        # rental_yield = st.number_input("Rental yield (% per year)", 1.0, 10.0, 4.0, 0.1) / 100
+        rental_yield = 0.08  # 4% fixed rental yield
+
+        trip_cities = cities_data[cities_data["in_trip"]]
+        total_food_cost = 0
+        total_rent_cost = 0
+        if len(trip_cities) > 0:
+            for city in trip_cities.index:
+                city_data = cities_data.loc[city]
+                st.write(f"**{city}**")
+
+                # Remove city
+                if st.button(f"Remove {city}", key=f"remove_{city}"):
+                    cities_data.at[city, "in_trip"] = False
+
+                # Number of days
+                days = st.number_input(
+                    f"Days in {city}", 1, 30, int(city_data["days"]), key=f"days_{city}"
+                )
+                cities_data.at[city, "days"] = days
+
+                # Costs
+                food_cost = days * meals_per_day * city_data["Meal (€)"]
+                yearly_rent = (
+                    city_data["Rent per m² (€)"] * apartment_size * rental_yield
+                )
+                daily_rent = yearly_rent / 365
+                rent_cost = daily_rent * days
+
+                total_food_cost += food_cost
+                total_rent_cost += rent_cost
+
+                st.write(f"- Food cost: €{food_cost:.2f}")
+                st.write(f"- Apartment rent estimate: €{rent_cost:.2f}")
+
+            st.markdown("---")
+            st.subheader(f"Total estimated food cost: €{total_food_cost:.2f}")
+            st.subheader(f"Total estimated apartment rent: €{total_rent_cost:.2f}")
+            st.subheader(
+                f"Grand total for trip: €{total_food_cost + total_rent_cost:.2f}"
+            )
+        else:
+            st.write("No cities added yet.")
+else:
+    st.set_page_config(
+        page_title="Google Maps Finder", page_icon="🗺️", layout="centered"
+    )
+    st.title("🗺️ Search engine from Google Maps (SerpApi)")
+
+    # Wprowadzenie danych
+    api_key = "95005b7ec1ba94377d7b3cd6f11e80f7b073b9771abe6f196f60392b5f77f65f"
+
+    select_city_to_search = st.selectbox(
+        f"Find attractions in {st.session_state.searched_city}: ",
+        options=st.session_state.list_of_cities,
+        index=int(cities_data.loc[st.session_state.searched_city]["city_index"]),
+    )
+    query = st.text_input("🔍 What are you looking for? (np. Coffee, Museum, Club)")
+    lat = cities_data.loc[st.session_state.searched_city]["Latitude"]
+    lon = cities_data.loc[st.session_state.searched_city]["Longitude"]
+
+    # Przycisk wyszukiwania
+    if st.button("Search"):
+        if not api_key:
+            st.error("❌ give me your API key to SerpApi!")
+        elif not query:
+            st.warning("⚠️ Write out, what you are looking for.")
+        else:
+            with st.spinner("🔎 Searching..."):
+                results = get_list_of_attractions(query, lat, lon, api_key)
+
+            if not results:
+                st.warning(
+                    "😢 No results — try changing your query or coordinates."
+                )
+            else:
+                st.success(f"✅ Found {len(results)} places!")
+                for r in results:
+                    st.subheader(r.get("title", "Unknown name"))
+                    st.write(f"⭐ Rating: {r.get('rating', 'No data')}")
+                    st.write(f"📍 Address: {r.get('address', 'No data')}")
+                    if r.get("thumbnail"):
+                        st.image(r["thumbnail"], width=300)
+                    st.markdown("---")
