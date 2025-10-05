@@ -101,3 +101,5 @@ Turning travel dreams into data-powered plans.
 # Data taken from these websites:
 https://www.numbeo.com
 https://serpapi.com
+
+Made with assistance of ChatGPT
