@@ -4,6 +4,7 @@ import folium
 from streamlit_folium import st_folium
 from marker_functions import set_icon_with_color
 import numpy as np
+from serpapi import GoogleSearch
 
 number_of_cities = 49
 
@@ -16,6 +17,7 @@ def load_city_data():
     df = df.rename(columns=lambda x: x.replace("–", "-").strip())
     df["in_trip"] = False
     df["days"] = 1
+    df["city_index"] = range(0, 49)
     df = df.set_index("City")
     return df
 
@@ -34,6 +36,12 @@ if "city_counter" not in st.session_state:
 
 if "page" not in st.session_state:
     st.session_state.page = "Trip Planner"
+
+if "searched_city" not in st.session_state:
+    st.session_state.searched_city = "Cracow"
+
+if "list_of_cities" not in st.session_state:
+    st.session_state.list_of_cities = st.session_state.cities_data.index
 
 
 def change_page():
@@ -92,8 +100,19 @@ def calculate_values(list_of_selected_categories):
     return scaled.tolist()
 
 
+def get_list_of_attractions(query, lat, lon, api_key):
+    ll = f"@{lat},{lon},14z"
+
+    params = {"engine": "google_maps", "q": query, "ll": ll, "api_key": api_key}
+
+    search = GoogleSearch(params)
+    results = search.get_dict()
+
+    return results.get("local_results", [])
+
+
 def go_to_page_2(city):
-    st.session_state.selected_city = city
+    st.session_state.searched_city = city
     st.session_state.page = "Search Attractions"
 
 
@@ -211,4 +230,43 @@ if page == "Trip Planner":
         else:
             st.write("No cities added yet.")
 else:
-    st.write("LOL")
+    st.set_page_config(
+        page_title="Google Maps Finder", page_icon="🗺️", layout="centered"
+    )
+    st.title("🗺️ Wyszukiwarka miejsc z Google Maps (SerpApi)")
+
+    # Wprowadzenie danych
+    api_key = "95005b7ec1ba94377d7b3cd6f11e80f7b073b9771abe6f196f60392b5f77f65f"
+
+    select_city_to_search = st.selectbox(
+        f"Szukaj atrakcji w mieście {st.session_state.searched_city}: ",
+        options=st.session_state.list_of_cities,
+        index=int(cities_data.loc[st.session_state.searched_city]["city_index"]),
+    )
+    query = st.text_input("🔍 Czego szukasz? (np. Coffee, Museum, Club)")
+    lat = cities_data.loc[st.session_state.searched_city]["Latitude"]
+    lon = cities_data.loc[st.session_state.searched_city]["Longitude"]
+
+    # Przycisk wyszukiwania
+    if st.button("Szukaj"):
+        if not api_key:
+            st.error("❌ Podaj swój API key do SerpApi!")
+        elif not query:
+            st.warning("⚠️ Wpisz, czego chcesz szukać.")
+        else:
+            with st.spinner("🔎 Szukam..."):
+                results = get_list_of_attractions(query, lat, lon, api_key)
+
+            if not results:
+                st.warning(
+                    "😢 Brak wyników — spróbuj zmienić zapytanie lub współrzędne."
+                )
+            else:
+                st.success(f"✅ Znaleziono {len(results)} miejsc!")
+                for r in results:
+                    st.subheader(r.get("title", "Nieznana nazwa"))
+                    st.write(f"⭐ Ocena: {r.get('rating', 'brak danych')}")
+                    st.write(f"📍 Adres: {r.get('address', 'brak danych')}")
+                    if r.get("thumbnail"):
+                        st.image(r["thumbnail"], width=300)
+                    st.markdown("---")
