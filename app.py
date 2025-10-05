@@ -233,40 +233,40 @@ else:
     st.set_page_config(
         page_title="Google Maps Finder", page_icon="🗺️", layout="centered"
     )
-    st.title("🗺️ Wyszukiwarka miejsc z Google Maps (SerpApi)")
+    st.title("🗺️ Search engine from Google Maps (SerpApi)")
 
     # Wprowadzenie danych
     api_key = "95005b7ec1ba94377d7b3cd6f11e80f7b073b9771abe6f196f60392b5f77f65f"
 
     select_city_to_search = st.selectbox(
-        f"Szukaj atrakcji w mieście {st.session_state.searched_city}: ",
+        f"Find attractions in {st.session_state.searched_city}: ",
         options=st.session_state.list_of_cities,
         index=int(cities_data.loc[st.session_state.searched_city]["city_index"]),
     )
-    query = st.text_input("🔍 Czego szukasz? (np. Coffee, Museum, Club)")
+    query = st.text_input("🔍 What are you looking for? (np. Coffee, Museum, Club)")
     lat = cities_data.loc[st.session_state.searched_city]["Latitude"]
     lon = cities_data.loc[st.session_state.searched_city]["Longitude"]
 
     # Przycisk wyszukiwania
-    if st.button("Szukaj"):
+    if st.button("Search"):
         if not api_key:
-            st.error("❌ Podaj swój API key do SerpApi!")
+            st.error("❌ give me your API key to SerpApi!")
         elif not query:
-            st.warning("⚠️ Wpisz, czego chcesz szukać.")
+            st.warning("⚠️ Write out, what you are looking for.")
         else:
-            with st.spinner("🔎 Szukam..."):
+            with st.spinner("🔎 Searching..."):
                 results = get_list_of_attractions(query, lat, lon, api_key)
 
             if not results:
                 st.warning(
-                    "😢 Brak wyników — spróbuj zmienić zapytanie lub współrzędne."
+                    "😢 No results — try changing your query or coordinates."
                 )
             else:
-                st.success(f"✅ Znaleziono {len(results)} miejsc!")
+                st.success(f"✅ Found {len(results)} places!")
                 for r in results:
-                    st.subheader(r.get("title", "Nieznana nazwa"))
-                    st.write(f"⭐ Ocena: {r.get('rating', 'brak danych')}")
-                    st.write(f"📍 Adres: {r.get('address', 'brak danych')}")
+                    st.subheader(r.get("title", "Unknown name"))
+                    st.write(f"⭐ Rating: {r.get('rating', 'No data')}")
+                    st.write(f"📍 Address: {r.get('address', 'No data')}")
                     if r.get("thumbnail"):
                         st.image(r["thumbnail"], width=300)
                     st.markdown("---")
